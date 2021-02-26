@@ -1,0 +1,95 @@
+public class Main{
+  
+  //main method
+  public static void main(String[] args){
+    
+    double timeB=System.currentTimeMillis();
+    
+    int numberOfThreads=1;                  //effective CPUs
+    int n=10000;                            //Runge-Kutta integration steps
+    double dt=1e-7;                       //Runge-Kutta integration stepsize
+    int numberOfAtoms=10;
+  
+    int runs=1;
+    
+    //dataBase(nEBins, Emin, dE, nFBins, Fmin, dF, nTBins, nYBins, Ymin, dY, nZBins, Zmin, dZ)
+    int nEBins, nYBins, nZBins, nTBins;
+    double Emin, dE, Ymin, dY, Zmin, dZ;
+    dataBase dataSummary=new dataBase(100,0,0.02, 500, 100,-1e-3,2e-5, 100,-5e-4,2e-5);
+    
+
+    for(int counter=1; counter<=runs; counter++){
+    
+      for(int dummy=0; dummy<1; dummy++){                                                   //start Coulomb object scope
+      
+        
+      //electron-Ion acceleration (1ns)
+      Coulomb[] eIonAcc=new Coulomb[numberOfThreads];
+
+      for(int thread=0; thread<numberOfThreads; thread++){
+        eIonAcc[thread]=new Coulomb(n,numberOfAtoms,dt);
+      }
+    
+      for(int thread=0; thread<numberOfThreads; thread++){
+        eIonAcc[thread].applyIC();
+        eIonAcc[thread].start();
+      }
+    
+      for(int thread=0; thread<numberOfThreads; thread++){
+        try{eIonAcc[thread].join();}
+        catch(Exception e){System.out.println("Interrupted");}
+      }
+    
+      for(int thread=0; thread<numberOfThreads; thread++){
+        eIonAcc[thread].outputTrajectories("Trajectories_eIonAcc" + thread + ".txt");
+        //eIonAcc[thread].outputKinematics("Kinematics_eIonAcc" + thread);
+      }
+      
+      
+      //get histogram variables
+      Emin=dataSummary.Emin; nEBins=dataSummary.nEBins; dE=dataSummary.dE;
+      nYBins=dataSummary.nYBins; nZBins=dataSummary.nZBins; Ymin=dataSummary.Ymin; Zmin=dataSummary.Zmin; dY=dataSummary.dY; dZ=dataSummary.dZ; nTBins=dataSummary.nTBins;
+      
+      //temporal energy histogram
+      for(int thread=0; thread<numberOfThreads; thread++){
+        for(int particleI=0; particleI<numberOfAtoms; particleI++){
+          for(int timeI=0; timeI<nTBins; timeI++){
+            double vsq=eIonAcc[thread].solution[timeI*n/nTBins][particleI][4]*eIonAcc[thread].solution[timeI*n/nTBins][particleI][4]+eIonAcc[thread].solution[timeI*n/nTBins][particleI][5]*eIonAcc[thread].solution[timeI*n/nTBins][particleI][5]+eIonAcc[thread].solution[timeI*n/nTBins][particleI][6]*eIonAcc[thread].solution[timeI*n/nTBins][particleI][6];
+            double KE=0.5*eIonAcc[thread].m*vsq*vsq;
+            for(int i=0; i<nEBins; i++){
+              if(Emin+i*dE<=KE && KE<Emin+(i+1)*dE /*&& ionExp[thread].solution[timeI*n/nTBins][particleI][2]>0.35*/){
+                dataSummary.histogramE[timeI][i]++;
+              }
+            }
+          }
+        }
+      }
+      
+      //2D temporal histogram
+      for(int thread=0; thread<numberOfThreads; thread++){
+        for(int particleI=0; particleI<numberOfAtoms; particleI++){
+          for(int timeI=0; timeI<nTBins; timeI++){
+            for(int j=0; j<nYBins; j++){
+              for(int k=0; k<nZBins; k++){
+                if(Ymin+j*dY<=eIonAcc[thread].solution[timeI*n/nTBins][particleI][1] && eIonAcc[thread].solution[timeI*n/nTBins][particleI][1]<Ymin+(j+1)*dY && Zmin+k*dZ<=eIonAcc[thread].solution[timeI*n/nTBins][particleI][2] && eIonAcc[thread].solution[timeI*n/nTBins][particleI][2]<Zmin+(k+1)*dZ){
+                  dataSummary.histogramXYT[timeI][j][k]++;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+
+      }                                                                                      //end Coulomb object scope
+      System.out.println(counter + " / " + runs);
+      dataSummary.outputHistogramE("histogramE_eIonAcc");
+      dataSummary.outputHistogramXYT("histogramXYT_eIonAcc");
+    }
+    
+    double timeA=System.currentTimeMillis();
+    System.out.println("Computation time: " + ((timeA-timeB)/1000.0) + " s");
+    
+  }
+  
+}
