@@ -1,0 +1,81 @@
+import java.io.*;
+
+public class dataBase{
+  
+  protected int nEBins; protected double Emin; protected double dE;
+  protected int nTBins;
+  
+  protected int nYBins; protected double Ymin; protected double dY;
+  protected int nZBins; protected double Zmin; protected double dZ;
+  
+  //histogramE
+  public double histogramE[][];
+  
+  //histogramXYT
+  public double histogramXYT[][][];
+
+  
+  public dataBase(int nEBins, double Emin, double dE, int nTBins, int nYBins, double Ymin, double dY, int nZBins, double Zmin, double dZ){
+    this.nEBins=nEBins; this.Emin=Emin; this.dE=dE;
+    this.nTBins=nTBins;
+    this.nYBins=nYBins; this.Ymin=Ymin; this.dY=dY;
+    this.nZBins=nZBins; this.Zmin=Zmin; this.dZ=dZ;
+    
+    this.histogramE=new double[nTBins][nEBins];
+  
+    this.histogramXYT=new double[nTBins][nYBins][nZBins];
+    
+  }
+  
+  
+  //output methods
+  public void outputHistogramE(String fileName){
+    
+    try{
+      FileWriter outStream = new FileWriter(fileName + ".txt", false);
+      PrintWriter outs = new PrintWriter(outStream);
+      
+      for(int i=0; i<nEBins; i++){outs.print(Emin+dE*i + " ");}
+      for(int timeI=0; timeI<nTBins; timeI++){
+        outs.println();
+        double sum=0;
+        for(int i=0; i<nEBins; i++){sum+=histogramE[timeI][i];}
+        for(int i=0; i<nEBins; i++){
+          outs.print(histogramE[timeI][i]/sum + " ");
+        }
+      }
+      
+      outs.close();
+      outStream.close();
+    }
+    catch(IOException exc){
+      System.out.println("Problem writing to file " + fileName);
+    }
+    
+  }
+  
+  
+  public void outputHistogramXYT(String fileName){
+    
+    try{
+      FileWriter outStream = new FileWriter(fileName + ".txt", false);
+      PrintWriter outs = new PrintWriter(outStream);
+      
+      for(int timeI=0; timeI<nTBins; timeI++){
+        for(int j=0; j<nYBins; j++){
+          for(int k=0; k<nZBins; k++){
+            outs.println((timeI) + " " + (Ymin+j*dY) + " " + (Zmin+k*dZ) + " " + histogramXYT[timeI][j][k]);
+          }
+        }
+      }
+      
+      outs.close();
+      outStream.close();
+    }
+    catch(IOException exc){
+      System.out.println("Problem writing to file " + fileName);
+    }
+    
+  }
+  
+}
