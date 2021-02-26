@@ -1,0 +1,198 @@
+import java.io.*;
+
+public class Coulomb extends Thread{
+
+  private int n;
+  private double dt;
+  
+  private int numberOfAtoms;
+  
+  protected double m=1.675e-27;
+  
+  //solution[position t, particle index, [X, Y, Z, t, dX/dt, dY/dt, dZ/dt, d²X/dt², d²Y/dt², d²Z/dt²]]
+  public double[][][] solution;
+  
+  //constructor
+  public Coulomb(int n, int numberOfAtoms, double dt){
+  this.n=n;
+  this.numberOfAtoms=numberOfAtoms;
+  this.dt=dt;
+  
+  this.solution=new double[n+1][numberOfAtoms][10];
+  }
+  
+  
+  //"main method"
+  public void run(){
+    
+    applyIC();
+    iterate();
+    
+  }
+  
+  
+  public void iterate(){
+    
+    double mx1,mx2,my1,my2,mz1,mz2,nx1,nx2,ny1,ny2,nz1,nz2,qx1,qx2,qy1,qy2,qz1,qz2,px1,px2,py1,py2,pz1,pz2;
+
+    for(int timeI=0; timeI<n; timeI++){
+      
+      for(int particleI=0; particleI<numberOfAtoms; particleI++){
+      
+        mx1 = solution[timeI][particleI][4];
+        mx2 = diffEqnX(particleI,timeI,solution[timeI][particleI][3],solution[timeI][particleI][0],solution[timeI][particleI][1],solution[timeI][particleI][2],solution[timeI][particleI][4],solution[timeI][particleI][5],solution[timeI][particleI][6]);
+        my1 = solution[timeI][particleI][5];
+        my2 = diffEqnY(particleI,timeI,solution[timeI][particleI][3],solution[timeI][particleI][0],solution[timeI][particleI][1],solution[timeI][particleI][2],solution[timeI][particleI][4],solution[timeI][particleI][5],solution[timeI][particleI][6]);
+        mz1 = solution[timeI][particleI][6];
+        mz2 = diffEqnZ(particleI,timeI,solution[timeI][particleI][3],solution[timeI][particleI][0],solution[timeI][particleI][1],solution[timeI][particleI][2],solution[timeI][particleI][4],solution[timeI][particleI][5],solution[timeI][particleI][6]);
+      
+        nx1 = solution[timeI][particleI][4]+mx2*dt/2;
+        nx2 = diffEqnX(particleI,timeI,solution[timeI][particleI][3]+dt/2,solution[timeI][particleI][0]+mx1*dt/2,solution[timeI][particleI][1]+my1*dt/2,solution[timeI][particleI][2]+mz1*dt/2,solution[timeI][particleI][4]+mx2*dt/2,solution[timeI][particleI][5]+my2*dt/2,solution[timeI][particleI][6]+mz2*dt/2);
+        ny1 = solution[timeI][particleI][5]+my2*dt/2;
+        ny2 = diffEqnY(particleI,timeI,solution[timeI][particleI][3]+dt/2,solution[timeI][particleI][0]+mx1*dt/2,solution[timeI][particleI][1]+my1*dt/2,solution[timeI][particleI][2]+mz1*dt/2,solution[timeI][particleI][4]+mx2*dt/2,solution[timeI][particleI][5]+my2*dt/2,solution[timeI][particleI][6]+mz2*dt/2);
+        nz1 = solution[timeI][particleI][6]+mz2*dt/2;
+        nz2 = diffEqnZ(particleI,timeI,solution[timeI][particleI][3]+dt/2,solution[timeI][particleI][0]+mx1*dt/2,solution[timeI][particleI][1]+my1*dt/2,solution[timeI][particleI][2]+mz1*dt/2,solution[timeI][particleI][4]+mx2*dt/2,solution[timeI][particleI][5]+my2*dt/2,solution[timeI][particleI][6]+mz2*dt/2);
+
+        qx1 = solution[timeI][particleI][4]+nx2*dt/2;
+        qx2 = diffEqnX(particleI,timeI,solution[timeI][particleI][3]+dt/2,solution[timeI][particleI][0]+nx1*dt/2,solution[timeI][particleI][1]+ny1*dt/2,solution[timeI][particleI][2]+nz1*dt/2,solution[timeI][particleI][4]+nx2*dt/2,solution[timeI][particleI][5]+ny2*dt/2,solution[timeI][particleI][6]+nz2*dt/2);
+        qy1 = solution[timeI][particleI][5]+ny2*dt/2;
+        qy2 = diffEqnY(particleI,timeI,solution[timeI][particleI][3]+dt/2,solution[timeI][particleI][0]+nx1*dt/2,solution[timeI][particleI][1]+ny1*dt/2,solution[timeI][particleI][2]+nz1*dt/2,solution[timeI][particleI][4]+nx2*dt/2,solution[timeI][particleI][5]+ny2*dt/2,solution[timeI][particleI][6]+nz2*dt/2);
+        qz1 = solution[timeI][particleI][6]+nz2*dt/2;
+        qz2 = diffEqnZ(particleI,timeI,solution[timeI][particleI][3]+dt/2,solution[timeI][particleI][0]+nx1*dt/2,solution[timeI][particleI][1]+ny1*dt/2,solution[timeI][particleI][2]+nz1*dt/2,solution[timeI][particleI][4]+nx2*dt/2,solution[timeI][particleI][5]+ny2*dt/2,solution[timeI][particleI][6]+nz2*dt/2);
+
+        px1 = solution[timeI][particleI][4]+qx2*dt;
+        px2 = diffEqnX(particleI,timeI,solution[timeI][particleI][3]+dt,solution[timeI][particleI][0]+qx1*dt,solution[timeI][particleI][1]+qy1*dt,solution[timeI][particleI][2]+qz1*dt,solution[timeI][particleI][4]+qx2*dt,solution[timeI][particleI][5]+qy2*dt,solution[timeI][particleI][6]+qz2*dt);
+        py1 = solution[timeI][particleI][5]+qy2*dt;
+        py2 = diffEqnY(particleI,timeI,solution[timeI][particleI][3]+dt,solution[timeI][particleI][0]+qx1*dt,solution[timeI][particleI][1]+qy1*dt,solution[timeI][particleI][2]+qz1*dt,solution[timeI][particleI][4]+qx2*dt,solution[timeI][particleI][5]+qy2*dt,solution[timeI][particleI][6]+qz2*dt);
+        pz1 = solution[timeI][particleI][6]+qz2*dt;
+        pz2 = diffEqnZ(particleI,timeI,solution[timeI][particleI][3]+dt,solution[timeI][particleI][0]+qx1*dt,solution[timeI][particleI][1]+qy1*dt,solution[timeI][particleI][2]+qz1*dt,solution[timeI][particleI][4]+qx2*dt,solution[timeI][particleI][5]+qy2*dt,solution[timeI][particleI][6]+qz2*dt);
+  
+        solution[timeI+1][particleI][0] = solution[timeI][particleI][0] + ((mx1 + 2 * nx1 + 2 * qx1 + px1) / 6) * dt;
+        solution[timeI+1][particleI][4] = solution[timeI][particleI][4] + ((mx2 + 2 * nx2 + 2 * qx2 + px2) / 6) * dt;
+        solution[timeI+1][particleI][1] = solution[timeI][particleI][1] + ((my1 + 2 * ny1 + 2 * qy1 + py1) / 6) * dt;
+        solution[timeI+1][particleI][5] = solution[timeI][particleI][5] + ((my2 + 2 * ny2 + 2 * qy2 + py2) / 6) * dt;
+        solution[timeI+1][particleI][2] = solution[timeI][particleI][2] + ((mz1 + 2 * nz1 + 2 * qz1 + pz1) / 6) * dt;
+        solution[timeI+1][particleI][6] = solution[timeI][particleI][6] + ((mz2 + 2 * nz2 + 2 * qz2 + pz2) / 6) * dt;
+        solution[timeI+1][particleI][3] = solution[timeI][particleI][3] + dt;
+        
+      }
+
+    }
+    
+  }
+  
+  
+  public void applyIC(){
+    
+    //double xp,yp,zp,rp,u,theta,phi,betaE;
+    
+    for(int particleI=0; particleI<numberOfAtoms; particleI++){
+    
+      /*
+      theta=Math.random()*3.142/2;
+      phi=Math.random()*3.142/2;
+    
+      do{
+        betaE=Math.random()*(20-0)+0;
+        u=Math.random()*1;
+      }while(u>0.3*betaE*Math.pow(2.718,-0.3*betaE));
+    
+      rp=Math.sqrt(2*betaE);
+    
+      xp=rp*Math.sin(theta)*Math.cos(phi);
+      yp=rp*Math.sin(theta)*Math.sin(phi);
+      zp=rp*Math.cos(theta);
+      */
+      
+      solution[0][particleI][0]=(2*Math.random()-1)*1e-3;       //x0
+      solution[0][particleI][4]=0;       //x'0
+      solution[0][particleI][1]=(2*Math.random()-1)*1e-3;       //y0
+      solution[0][particleI][5]=0;       //y'0
+      solution[0][particleI][2]=(2*Math.random()-1)*1e-3;       //z0
+      solution[0][particleI][6]=0;       //z'0
+    }
+    
+  }
+  
+
+  public double diffEqnX(int particleI, int timeI, double t, double x, double y, double z, double xp, double yp, double zp){
+    double diffEqn=0;
+    for(int particleJ=0; particleJ<numberOfAtoms; particleJ++){
+      if(particleI==particleJ){continue;}
+      diffEqn += -2.3e-28/m*(x-solution[timeI][particleJ][0])/Math.pow(((x-solution[timeI][particleJ][0])*(x-solution[timeI][particleJ][0])+(y-solution[timeI][particleJ][1])*(y-solution[timeI][particleJ][1])+(z-solution[timeI][particleJ][2])*(z-solution[timeI][particleJ][2])),1.5);
+    }
+    return diffEqn;
+  }
+  
+  public double diffEqnY(int particleI, int timeI, double t, double x, double y, double z, double xp, double yp, double zp){
+    double diffEqn=0;
+    for(int particleJ=0; particleJ<numberOfAtoms; particleJ++){
+      if(particleI==particleJ){continue;}
+      diffEqn += -2.3e-28/m*(y-solution[timeI][particleJ][1])/Math.pow(((x-solution[timeI][particleJ][0])*(x-solution[timeI][particleJ][0])+(y-solution[timeI][particleJ][1])*(y-solution[timeI][particleJ][1])+(z-solution[timeI][particleJ][2])*(z-solution[timeI][particleJ][2])),1.5);
+    }
+    return diffEqn;
+  }
+    
+  public double diffEqnZ(int particleI, int timeI, double t, double x, double y, double z, double xp, double yp, double zp){
+    double diffEqn=0;
+    for(int particleJ=0; particleJ<numberOfAtoms; particleJ++){
+      if(particleI==particleJ){continue;}
+      diffEqn += -2.3e-28/m*(z-solution[timeI][particleJ][2])/Math.pow(((x-solution[timeI][particleJ][0])*(x-solution[timeI][particleJ][0])+(y-solution[timeI][particleJ][1])*(y-solution[timeI][particleJ][1])+(z-solution[timeI][particleJ][2])*(z-solution[timeI][particleJ][2])),1.5);
+    }
+    return diffEqn;
+  }
+  
+  
+  public void outputTrajectories(String fileName){
+
+    try{
+      FileWriter outStream = new FileWriter(fileName, true);
+      PrintWriter outs = new PrintWriter(outStream);
+      
+      //output format time x1 y1 z1 x2 y2 z2 ...
+      for(int timeI=0; timeI<n; timeI++){
+        outs.print(solution[timeI][0][3] + " ");
+        for(int particleI=0; particleI<numberOfAtoms; particleI++){
+          outs.print(solution[timeI][particleI][0] + " " + solution[timeI][particleI][1] + " " + solution[timeI][particleI][2] + " ");
+        }
+        outs.println();
+      }
+               
+      outs.close();
+      outStream.close();
+    }
+    catch(IOException exc){
+      System.out.println("Problem writing to file " + fileName);
+    }
+    //System.out.println(fileName + " completed");
+    
+  }
+  
+  
+  public void outputKinematics(String fileName){
+
+    try{
+      FileWriter outStream = new FileWriter(fileName, true);
+      PrintWriter outs = new PrintWriter(outStream);
+      
+      //output format time vx1 vy1 vz1 Lx1 Ly1 Lz1 vx2 vy2 vz2 Lx2 Ly2 Lz2 ...
+      for(int timeI=0; timeI<n; timeI++){
+        outs.print(solution[timeI][0][3] + " ");
+        for(int particleI=0; particleI<numberOfAtoms; particleI++){
+          outs.print(solution[timeI][particleI][4] + " " + solution[timeI][particleI][5] + " " + solution[timeI][particleI][6] + " " + (solution[timeI][particleI][1]*solution[timeI][particleI][6]-solution[timeI][particleI][2]*solution[timeI][particleI][5]) + " " + (solution[timeI][particleI][2]*solution[timeI][particleI][4]-(solution[timeI][particleI][0]-0)*solution[timeI][particleI][6]) + " " + ((solution[timeI][particleI][0]-0)*solution[timeI][particleI][5]-solution[timeI][particleI][1]*solution[timeI][particleI][4])+ " ");
+        }
+        outs.println();
+      }
+               
+      outs.close();
+      outStream.close();
+    }
+    catch(IOException exc){
+      System.out.println("Problem writing to file " + fileName);
+    }
+    //System.out.println(fileName + " completed");
+    
+  }
+  
+  
+}
